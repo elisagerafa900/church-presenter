@@ -156,7 +156,7 @@ kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: var(--panel-3)
 /* chapter */
 .chapter-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px 2px; flex: none; }
 .chapter-head h2 { margin: 0; font-family: var(--label-font); font-size: 20px; letter-spacing: .5px; }
-.chapters { display: flex; gap: 5px; overflow-x: auto; padding: 8px 14px 10px; border-bottom: 1px solid var(--line); scrollbar-width: thin; flex: none; }
+.chapters { display: flex; gap: 5px; overflow-x: auto; padding: 8px 14px 10px; border-bottom: 1px solid var(--line); flex: none; }
 .chip { min-width: 36px; height: 32px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--panel-2); font-size: 13px; flex: none; }
 .chip.sel { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 700; }
 .verses { overflow-y: auto; flex: 1; padding: 6px 8px; }
@@ -313,3 +313,34 @@ kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: var(--panel-3)
 .imp-list { margin-top: 12px; }
 .imp-item { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; font-size: 14px; }
 .imp-item .link { margin-left: auto; }
+
+/* ---------- Live sermon column scrolls as a whole ---------- */
+.livecol { overflow: hidden; }
+.livecol .live { overflow-y: auto; overflow-x: hidden; }
+.livecol .live-head { position: sticky; top: 0; z-index: 3; background: var(--panel); }
+.livecol .live-settings, .livecol .notice.slim, .livecol .live-section-title { flex: none; }
+.livecol .dets { flex: 1 0 190px; min-height: 190px; }
+.livecol .transcript { flex: 1 0 170px; min-height: 170px; }
+
+/* ---------- scrollbars (whole app): slim, rounded, gold on hover ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #3a3b42;
+  border-radius: 10px;
+  border: 3px solid transparent; /* gap around the bar */
+  background-clip: padding-box;
+  min-height: 36px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--gold); border-width: 2px; }
+::-webkit-scrollbar-thumb:active { background-color: var(--gold-2); border-width: 2px; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+/* the chapter strip scrolls sideways: a little thinner */
+.chapters::-webkit-scrollbar { height: 8px; }
+/* a faint track only while hovering a scrolling area */
+.verses:hover::-webkit-scrollbar-track, .list:hover::-webkit-scrollbar-track, .livecol .live:hover::-webkit-scrollbar-track,
+.dets:hover::-webkit-scrollbar-track, .transcript:hover::-webkit-scrollbar-track, .qlist:hover::-webkit-scrollbar-track, .modal::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+}
