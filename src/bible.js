@@ -1,4 +1,5 @@
 import { BOOKS } from '../shared/bibleRef.js';
+import { isYouVersion, loadYouVersionBible } from './youversion.js';
 
 // Built into the app (all public domain)
 export const TRANSLATIONS = [
@@ -13,7 +14,9 @@ const cache = new Map();
 
 export function loadBible(id) {
   if (!cache.has(id)) {
-    const p = BUILTIN_IDS.has(id)
+    const p = isYouVersion(id)
+      ? loadYouVersionBible(id)
+      : BUILTIN_IDS.has(id)
       ? fetch(`./bibles/${id}.json`).then((r) => {
         if (!r.ok) throw new Error(`Could not load ${id}`);
         return r.json();
@@ -42,7 +45,7 @@ export async function importedBibles() {
 
 export function verseText(bible, ref) {
   return bible?.books[ref.book]?.chapters[ref.chapter - 1]?.[ref.verse - 1] ?? '';
-}
+} // online Bibles: '' until the chapter has been fetched
 
 export function refLabel(ref) {
   return `${BOOKS[ref.book]} ${ref.chapter}:${ref.verse}`;

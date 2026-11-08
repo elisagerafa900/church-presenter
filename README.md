@@ -13,7 +13,16 @@ automatic verse detection come in Phases 3–4.
 ## What works now
 - **4 Bibles, offline:** KJV, WEB (World English Bible, "LORD" edition), BSB (Berean Standard Bible),
   ASV — all public domain.
-- **Import a Bible** (Bible menu → *+ Import…*): load a translation your church is licensed to use
+- **YouVersion online Bibles** (Bible menu → *+ Add Bible…* → *YouVersion (online)*): paste your own
+  YouVersion Platform **App Key** (platform.youversion.com), pick the versions your key is licensed for
+  (e.g. NIV, NKJV) and they appear in the Bible menu. Needs internet; chapters are fetched as you use
+  them; the publisher's copyright line is shown on screen.
+  **Offline copy (opt-in per version):** switch on *Keep an offline copy* only if that version's licence
+  allows it. Chapters you open (or *Download all*) are stored **encrypted for the Windows user**, used
+  when there is no internet, re-checked with YouVersion when online, and deleted if access ends or it
+  isn't re-checked for 60 days. Word search and
+  quoted-verse detection use the built-in Bibles.
+- **Import a Bible** (Bible menu → *+ Add Bible…* → *From a file*): load a translation your church is licensed to use
   (e.g. NIV / NKJV with the publisher's permission). Reads **Zefania XML, OSIS, USFX, JSON, CSV/TSV**.
   Imported Bibles stay on that PC and survive updates. Please don't commit licensed texts to the repo.
 - **Smart search box:** type `john 3:16`, `jn 3 16`, `1 cor 13 4-7`, `ps 23`, `phil 4 13`,
@@ -132,6 +141,11 @@ electron/models.cjs   offline model download / install
 shared/quotes.js      quoted-verse matching
 shared/bibleImport.js reads Bible files (Zefania, OSIS, USFX, JSON, CSV/TSV)
 electron/bibles.cjs   stores imported Bibles on the PC
+electron/youversion.cjs  YouVersion Platform API (App Key header, versions, index, chapters)
+electron/yvcache.cjs  encrypted offline copies (Electron safeStorage)
+electron/yvoffline.cjs   offline rules: saved-first chapters, licence re-check, Download all
+src/youversion.js     online Bibles in the menu, fetch-on-demand
+shared/yvHtml.js      splits YouVersion chapter HTML into verses
 tools/make-web.mjs    builds WEB.json (LORD edition) from the public-domain USFX
 shared/*.test.js      `npm test`
 public/bibles/*.json  KJV, BSB, ASV

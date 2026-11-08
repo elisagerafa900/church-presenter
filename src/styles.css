@@ -344,3 +344,26 @@ kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: var(--panel-3)
   background: rgba(255, 255, 255, 0.03);
   border-radius: 10px;
 }
+
+/* copyright line for licensed (online) Bibles */
+.attribution { position: absolute; left: 80px; right: 80px; bottom: 34px; text-align: center; font-size: 22px; opacity: .72; line-height: 1.25; }
+.lt-attr { font-size: 18px; opacity: .7; margin-top: 8px; }
+.imp-tabs { margin: 0 0 12px; width: fit-content; }
+.imp-tabs button { padding: 6px 14px; font-size: 13px; }
+.yv { display: flex; flex-direction: column; gap: 10px; }
+.yv-row { display: flex; gap: 10px; align-items: flex-end; }
+.yv-lang { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; }
+.yv-lang input { width: 90px; height: 34px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg); color: var(--text); padding: 0 8px; font: inherit; }
+.yv-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.yv-item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 4px; font-size: 14px; cursor: pointer; }
+.yv-item:hover { background: var(--panel-2); }
+.yv-item.sel { background: rgba(214,165,58,.12); }
+.yv-item b { min-width: 56px; color: var(--gold); }
+.yv-offline { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.yv-off-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--panel-2); display: flex; flex-direction: column; gap: 6px; }
+.yv-off-top { display: flex; align-items: center; gap: 8px; }
+.yv-off-top b { color: var(--gold); min-width: 52px; }
+.yv-off-top .muted { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yv-off-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.yv-off-actions .grow { flex: 1; min-width: 80px; }
+.meter.dl div { background: var(--gold); }

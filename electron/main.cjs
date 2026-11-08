@@ -1,6 +1,6 @@
 // Electron main process: operator window, projector output window,
 // and a small web server so OBS/vMix can use the output as a browser source.
-const { app, BrowserWindow, ipcMain, screen, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog, safeStorage } = require('electron');
 const path = require('node:path');
 const http = require('node:http');
 const fs = require('node:fs');
@@ -10,6 +10,8 @@ const { DeepgramStream, testKey } = require('./stt.cjs');
 const { OfflineStream } = require('./offline-stt.cjs');
 const models = require('./models.cjs');
 const bibles = require('./bibles.cjs');
+const yv = require('./youversion.cjs');
+const yvCache = require('./yvcache.cjs');
 
 // ---------- automatic updates (GitHub Releases: elisagerafa900/church-presenter-releases) ----------
 let updateState = { state: 'idle', version: app.getVersion() };
@@ -337,6 +339,23 @@ ipcMain.handle('models:installFile', async (_e, id) => {
     modelBusy = null;
   }
 });
+// YouVersion online Bibles (errors go back to the screen as { error })
+const yvCall = (fn) => async (_e, ...args) => {
+  try { return { ok: true, data: await fn(...args) }; } catch (e) { return { ok: false, error: e.message }; }
+};
+ipcMain.handle('yv:versions', yvCall((key, lang) => yv.listVersions(key, lang)));
+ipcMain.handle('yv:version', yvCall((key, id) => yv.getVersion(key, id)));
+const yvOff = require('./yvoffline.cjs')(yv, yvCache);
+const yvIndex = yvOff.index;
+const yvChapter = yvOff.chapter;
+ipcMain.handle('yv:index', yvCall((key, id, offline) => yvIndex(key, id, offline)));
+ipcMain.handle('yv:chapter', yvCall((key, id, usfm, offline) => yvChapter(key, id, usfm, offline)));
+ipcMain.handle('yv:cacheStats', (_e, id) => yvCache.stats(id));
+ipcMain.handle('yv:cacheClear', (_e, id) => { yvCache.clear(id); return yvCache.stats(id); });
+
+// "Download all" for a version (only if its offline copy is switched on)
+ipcMain.handle('yv:cancelDownload', (_e, id) => yvOff.cancel(id));
+ipcMain.handle('yv:downloadAll', yvCall((key, id) => yvOff.downloadAll(key, id, (p) => operatorWin?.webContents.send('yv:progress', p))));
 ipcMain.handle('bibles:list', () => bibles.list());
 ipcMain.handle('bibles:save', (_e, id, name, json) => bibles.save(id, name, json));
 ipcMain.handle('bibles:read', (_e, id) => bibles.read(id));
@@ -348,6 +367,7 @@ ipcMain.handle('ndi:config', (_e, cfg) => applyNdi(cfg));
 app.whenReady().then(() => {
   models.setModelsDir(path.join(app.getPath('userData'), 'models'));
   bibles.setDir(path.join(app.getPath('userData'), 'bibles'));
+  yvCache.setup(path.join(app.getPath('userData'), 'yv-offline'), safeStorage);
   startWebServer();
   createOperator();
   setupUpdates();

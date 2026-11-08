@@ -1,7 +1,8 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { BOOKS, parseQuery, suggestBooks } from '../shared/bibleRef.js';
-import { TRANSLATIONS, loadBible, verseText, refLabel, sameRef, searchText, importedBibles } from './bible.js';
+import { TRANSLATIONS, loadBible, verseText, refLabel, sameRef, searchText, importedBibles, forgetBible } from './bible.js';
 import ImportBible from './ImportBible.jsx';
+import { yvConfig, isYouVersion } from './youversion.js';
 import { BUILTIN_THEMES, imageFileToDataUrl } from './themes.js';
 import { Slide, Stage } from './Slide.jsx';
 import LivePanel from './LivePanel.jsx';
@@ -41,7 +42,10 @@ export default function App() {
   const [imported, setImported] = useState([]);
   const [showImport, setShowImport] = useState(false);
   useEffect(() => { importedBibles().then(setImported); }, []);
-  const allTranslations = [...TRANSLATIONS, ...imported];
+  const [yvVersions, setYvVersions] = useState(() => yvConfig.versions());
+  const allTranslations = [...TRANSLATIONS, ...imported, ...yvVersions.map((v) => ({ id: v.id, name: `${v.title} (YouVersion, online)`, label: v.abbreviation }))];
+  const labelFor = (id) => allTranslations.find((t) => t.id === id)?.label || id;
+  const [chapterTick, setChapterTick] = useState(0); // re-render when an online chapter arrives
   const [bible, setBible] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [nav, setNav] = usePersist('nav', { book: 42, chapter: 3 });
@@ -93,6 +97,21 @@ export default function App() {
     return () => { alive = false; };
   }, [tid]);
 
+  // Online (YouVersion) Bibles: fetch the chapters we are looking at
+  useEffect(() => {
+    if (!bible?.remote) return;
+    const want = [nav, preview, live].filter(Boolean);
+    let alive = true;
+    for (const r of want) {
+      if (!bible.isLoaded(r.book, r.chapter)) {
+        bible.ensureChapter(r.book, r.chapter)
+          .then(() => alive && setChapterTick((t) => t + 1))
+          .catch((e) => alive && flash(e.message));
+      }
+    }
+    return () => { alive = false; };
+  }, [bible, nav.book, nav.chapter, preview.book, preview.chapter, live?.book, live?.chapter]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Displays + output status (Electron only)
   const refreshDisplays = useCallback(() => {
     api?.listDisplays().then((d) => {
@@ -126,10 +145,10 @@ export default function App() {
   const outState = useMemo(
     () => ({
       mode,
-      slide: live && bible ? { text: verseText(bible, live), ref: refLabel(live), translation: tid } : null,
+      slide: live && bible ? { text: verseText(bible, live), ref: refLabel(live), translation: labelFor(tid), attribution: bible.remote?.attribution || '' } : null,
       theme,
     }),
-    [mode, live, bible, tid, theme],
+    [mode, live, bible, tid, theme, chapterTick], // eslint-disable-line react-hooks/exhaustive-deps
   );
   useEffect(() => { api?.sendState(outState); }, [outState]);
 
@@ -140,8 +159,11 @@ export default function App() {
     setNav({ book: ref.book, chapter: ref.chapter });
     setPreview({ book: ref.book, chapter: ref.chapter, verse: ref.verse || 1 });
   };
-  const present = (ref) => {
+  const present = async (ref) => {
     if (!ref) return;
+    if (bible?.remote && !bible.isLoaded(ref.book, ref.chapter)) {
+      try { await bible.ensureChapter(ref.book, ref.chapter); setChapterTick((t) => t + 1); } catch (e) { flash(e.message); return; }
+    }
     setLive(ref);
     setMode('live');
     goTo(ref);
@@ -262,6 +284,7 @@ export default function App() {
   const dq = useDeferredValue(query);
   const results = useMemo(() => {
     if (!bible || parsed || dq.trim().length < 3) return [];
+    if (bible.remote) return [];
     return searchText(bible, dq, 80);
   }, [bible, dq, parsed]);
 
@@ -338,7 +361,8 @@ export default function App() {
 
   const chapterVerses = bible?.books[nav.book]?.chapters[nav.chapter - 1] || [];
   const chapterCount = bible?.books[nav.book]?.chapters.length || 0;
-  const previewState = { mode: 'live', slide: bible ? { text: verseText(bible, preview), ref: refLabel(preview), translation: tid } : null };
+  const previewState = { mode: 'live', slide: bible ? { text: verseText(bible, preview), ref: refLabel(preview), translation: labelFor(tid), attribution: bible.remote?.attribution || '' } : null };
+  const chapterLoading = !!bible?.remote && !bible.isLoaded(nav.book, nav.chapter);
 
   const programStatus = mode === 'black' ? 'BLACK' : mode === 'clear' ? 'CLEARED' : live ? refLabel(live) : '—';
 
@@ -353,7 +377,9 @@ export default function App() {
             {TRANSLATIONS.map((t) => <option key={t.id} value={t.id} title={t.name}>{t.id}</option>)}
             {imported.length > 0 && <option disabled>──────</option>}
             {imported.map((t) => <option key={t.id} value={t.id} title={t.name}>{t.id}</option>)}
-            <option value="__import">+ Import…</option>
+            {yvVersions.length > 0 && <option disabled>── online ──</option>}
+            {yvVersions.map((v) => <option key={v.id} value={v.id} title={`${v.title} (YouVersion)`}>{v.abbreviation}</option>)}
+            <option value="__import">+ Add Bible…</option>
           </select>
         </div>
         <div className="tb-group">
@@ -517,7 +543,7 @@ export default function App() {
           ) : query.trim() && !parsed ? (
             <div className="list">
               {dq.trim().length < 3 && <div className="empty">Keep typing…</div>}
-              {dq.trim().length >= 3 && results.length === 0 && <div className="empty">No verses found</div>}
+              {dq.trim().length >= 3 && results.length === 0 && <div className="empty">{bible?.remote ? 'Word search works with the built-in Bibles (KJV, WEB, BSB, ASV). Online Bibles: type a reference like John 3:16.' : 'No verses found'}</div>}
               {results.map((r) => (
                 <button key={`${r.ref.book}.${r.ref.chapter}.${r.ref.verse}`} className="result" onClick={() => goTo(r.ref)} onDoubleClick={() => present(r.ref)}>
                   <span className="r-ref">{refLabel(r.ref)}</span>
@@ -543,7 +569,7 @@ export default function App() {
         <section className="panel middle">
           <div className="chapter-head">
             <h2>{BOOKS[nav.book]} {nav.chapter}</h2>
-            <span className="muted">{tid}</span>
+            <span className="muted">{labelFor(tid)}{bible?.remote ? (bible.remote.fromCache ? ' · offline copy' : bible.remote.offline ? ' · online + offline copy' : ' · online') : ''}</span>
           </div>
           <div className="chapters">
             {Array.from({ length: chapterCount }, (_, i) => (
@@ -552,8 +578,9 @@ export default function App() {
           </div>
           <div className="verses" ref={verseListRef}>
             {loadError && <div className="empty">{loadError}</div>}
-            {!bible && !loadError && <div className="empty">Loading Bible…</div>}
-            {chapterVerses.map((t, i) => {
+            {!bible && !loadError && <div className="empty">{isYouVersion(tid) ? 'Connecting to YouVersion…' : 'Loading Bible…'}</div>}
+            {chapterLoading && <div className="empty">Loading this chapter from YouVersion…</div>}
+            {!chapterLoading && chapterVerses.map((t, i) => {
               const ref = { book: nav.book, chapter: nav.chapter, verse: i + 1 };
               return (
                 <div
@@ -618,6 +645,14 @@ export default function App() {
           onClose={() => setShowImport(false)}
           onImported={async (id) => { setImported(await importedBibles()); setTid(id); setShowImport(false); flash(`${id} imported`); }}
           onRemoved={(list, id) => { setImported(list); if (tid === id) setTid('KJV'); flash(`${id} removed`); }}
+          onYvSaved={(list, opts = {}) => {
+            setYvVersions(list);
+            list.forEach((v) => forgetBible(v.id)); // reload with new offline setting
+            if (isYouVersion(tid) && !list.some((v) => v.id === tid)) setTid('KJV');
+            else if (isYouVersion(tid)) loadBible(tid).then(setBible).catch(() => {});
+            else if (!opts.stayOpen && list[0]) setTid(list[0].id);
+            if (!opts.stayOpen) { setShowImport(false); flash('Online Bibles updated'); }
+          }}
         />
       )}
 

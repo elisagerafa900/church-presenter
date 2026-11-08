@@ -80,6 +80,7 @@ export function Slide({ state, theme, layout = 'full' }) {
         <div className="lt-bar" style={{ borderLeftColor: theme.refColor }}>
           <div className="lt-ref" style={{ color: theme.refColor, fontFamily: FONTS.sans }}>{refText}</div>
           <FitText className="lt-text" text={slide.text} max={50} min={26} style={{ fontFamily: font }} />
+          {slide.attribution && <div className="lt-attr">{slide.attribution}</div>}
         </div>
       </div>
     );
@@ -101,6 +102,9 @@ export function Slide({ state, theme, layout = 'full' }) {
           />
           <div className="full-ref" style={{ color: theme.refColor, fontFamily: FONTS.sans, textShadow: shadow }}>{refText}</div>
         </div>
+      )}
+      {showText && slide.attribution && (
+        <div className="attribution" style={{ color: theme.textColor, fontFamily: FONTS.sans }}>{slide.attribution}</div>
       )}
     </>
   );

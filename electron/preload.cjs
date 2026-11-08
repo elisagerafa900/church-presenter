@@ -51,6 +51,19 @@ contextBridge.exposeInMainWorld('presenter', {
     ipcRenderer.on('update:status', h);
     return () => ipcRenderer.removeListener('update:status', h);
   },
+  yvVersions: (key, lang) => ipcRenderer.invoke('yv:versions', key, lang),
+  yvVersion: (key, id) => ipcRenderer.invoke('yv:version', key, id),
+  yvIndex: (key, id, offline) => ipcRenderer.invoke('yv:index', key, id, offline),
+  yvChapter: (key, id, usfm, offline) => ipcRenderer.invoke('yv:chapter', key, id, usfm, offline),
+  yvCacheStats: (id) => ipcRenderer.invoke('yv:cacheStats', id),
+  yvCacheClear: (id) => ipcRenderer.invoke('yv:cacheClear', id),
+  yvDownloadAll: (key, id) => ipcRenderer.invoke('yv:downloadAll', key, id),
+  yvCancelDownload: (id) => ipcRenderer.invoke('yv:cancelDownload', id),
+  onYvProgress: (cb) => {
+    const h = (_e, p) => cb(p);
+    ipcRenderer.on('yv:progress', h);
+    return () => ipcRenderer.removeListener('yv:progress', h);
+  },
   biblesList: () => ipcRenderer.invoke('bibles:list'),
   biblesSave: (id, name, json) => ipcRenderer.invoke('bibles:save', id, name, json),
   biblesRead: (id) => ipcRenderer.invoke('bibles:read', id),

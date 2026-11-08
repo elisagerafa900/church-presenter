@@ -1,7 +1,7 @@
 {
   "name": "church-presenter",
   "productName": "Church Presenter",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Scripture presenter with live sermon transcription (Phase 1: presenter core)",
   "type": "module",
   "main": "electron/main.cjs",
@@ -10,7 +10,7 @@
     "build": "vite build",
     "start": "vite build && electron .",
     "dist": "vite build && electron-builder --win",
-    "test": "node shared/bibleRef.test.js && node shared/detector.test.js && node shared/bibleImport.test.js",
+    "test": "node shared/bibleRef.test.js && node shared/detector.test.js && node shared/bibleImport.test.js && node electron/yvoffline.test.cjs",
     "release": "vite build && electron-builder --win --publish always"
   },
   "build": {
