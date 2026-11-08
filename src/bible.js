@@ -1,24 +1,43 @@
 import { BOOKS } from '../shared/bibleRef.js';
 
+// Built into the app (all public domain)
 export const TRANSLATIONS = [
   { id: 'KJV', name: 'King James Version' },
+  { id: 'WEB', name: 'World English Bible (LORD edition)' },
   { id: 'BSB', name: 'Berean Standard Bible' },
   { id: 'ASV', name: 'American Standard Version' },
 ];
+export const BUILTIN_IDS = new Set(TRANSLATIONS.map((t) => t.id));
 
 const cache = new Map();
 
 export function loadBible(id) {
   if (!cache.has(id)) {
-    cache.set(
-      id,
-      fetch(`./bibles/${id}.json`).then((r) => {
+    const p = BUILTIN_IDS.has(id)
+      ? fetch(`./bibles/${id}.json`).then((r) => {
         if (!r.ok) throw new Error(`Could not load ${id}`);
         return r.json();
-      }),
-    );
+      })
+      : window.presenter?.biblesRead
+        ? window.presenter.biblesRead(id).then((t) => JSON.parse(t))
+        : Promise.reject(new Error(`${id} is not available`));
+    p.catch(() => cache.delete(id));
+    cache.set(id, p);
   }
   return cache.get(id);
+}
+
+export function forgetBible(id) {
+  cache.delete(id);
+}
+
+/** Bibles the church imported (stored on this PC). */
+export async function importedBibles() {
+  try {
+    return (await window.presenter?.biblesList?.()) || [];
+  } catch {
+    return [];
+  }
 }
 
 export function verseText(bible, ref) {

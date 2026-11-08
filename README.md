@@ -11,7 +11,11 @@ Scripture presenter for the church projector and livestream. Live sermon transcr
 automatic verse detection come in Phases 3–4.
 
 ## What works now
-- **3 Bibles, offline:** KJV, BSB (Berean Standard Bible), ASV — all public domain.
+- **4 Bibles, offline:** KJV, WEB (World English Bible, "LORD" edition), BSB (Berean Standard Bible),
+  ASV — all public domain.
+- **Import a Bible** (Bible menu → *+ Import…*): load a translation your church is licensed to use
+  (e.g. NIV / NKJV with the publisher's permission). Reads **Zefania XML, OSIS, USFX, JSON, CSV/TSV**.
+  Imported Bibles stay on that PC and survive updates. Please don't commit licensed texts to the repo.
 - **Smart search box:** type `john 3:16`, `jn 3 16`, `1 cor 13 4-7`, `ps 23`, `phil 4 13`,
   or words like `faith hope love`. A range (`4-7`) goes straight into the queue.
 - **Book list, chapter chips, verse list.** Click = preview, double-click = put on screen.
@@ -126,6 +130,9 @@ src/LivePanel.jsx     Live sermon panel
 electron/offline-stt.cjs  free offline transcription (sherpa-onnx + Silero VAD)
 electron/models.cjs   offline model download / install
 shared/quotes.js      quoted-verse matching
+shared/bibleImport.js reads Bible files (Zefania, OSIS, USFX, JSON, CSV/TSV)
+electron/bibles.cjs   stores imported Bibles on the PC
+tools/make-web.mjs    builds WEB.json (LORD edition) from the public-domain USFX
 shared/*.test.js      `npm test`
 public/bibles/*.json  KJV, BSB, ASV
 ```

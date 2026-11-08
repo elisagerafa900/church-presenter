@@ -294,3 +294,22 @@ kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: var(--panel-3)
 .upd { display: inline-flex; gap: 8px; align-items: center; padding-left: 12px; border-left: 1px solid var(--line); }
 .upd .link { font-size: 12px; }
 .upd-ready { background: var(--gold); color: var(--gold-ink); border: 0; border-radius: 4px; padding: 3px 10px; font-weight: 700; font-size: 12px; }
+
+/* ---------- import a Bible ---------- */
+.dropdown.narrow { width: 92px; }
+.file-btn { cursor: pointer; margin: 4px 0; }
+.file-name { margin-left: 10px; }
+.imp-preview { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); display: flex; flex-direction: column; gap: 8px; }
+.imp-stats { font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.warn-txt { color: var(--warn); }
+.imp-sample { font-size: 13px; color: #c9c8c2; }
+.imp-sample b { color: var(--gold); margin-right: 6px; }
+.imp-fields { display: flex; gap: 10px; }
+.imp-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; width: 110px; }
+.imp-fields label.grow { flex: 1; width: auto; }
+.imp-fields input { height: 32px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg); color: var(--text); padding: 0 8px; font: inherit; font-size: 14px; }
+.perm { font-size: 13px; align-items: flex-start; }
+.perm input { margin-top: 3px; }
+.imp-list { margin-top: 12px; }
+.imp-item { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; font-size: 14px; }
+.imp-item .link { margin-left: auto; }

@@ -51,6 +51,10 @@ contextBridge.exposeInMainWorld('presenter', {
     ipcRenderer.on('update:status', h);
     return () => ipcRenderer.removeListener('update:status', h);
   },
+  biblesList: () => ipcRenderer.invoke('bibles:list'),
+  biblesSave: (id, name, json) => ipcRenderer.invoke('bibles:save', id, name, json),
+  biblesRead: (id) => ipcRenderer.invoke('bibles:read', id),
+  biblesRemove: (id) => ipcRenderer.invoke('bibles:remove', id),
   onDisplaysChanged: (cb) => {
     const h = () => cb();
     ipcRenderer.on('displays:changed', h);

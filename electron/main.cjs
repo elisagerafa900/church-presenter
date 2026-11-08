@@ -9,6 +9,7 @@ const ndi = require('./ndi.cjs');
 const { DeepgramStream, testKey } = require('./stt.cjs');
 const { OfflineStream } = require('./offline-stt.cjs');
 const models = require('./models.cjs');
+const bibles = require('./bibles.cjs');
 
 // ---------- automatic updates (GitHub Releases: elisagerafa900/church-presenter-releases) ----------
 let updateState = { state: 'idle', version: app.getVersion() };
@@ -336,12 +337,17 @@ ipcMain.handle('models:installFile', async (_e, id) => {
     modelBusy = null;
   }
 });
+ipcMain.handle('bibles:list', () => bibles.list());
+ipcMain.handle('bibles:save', (_e, id, name, json) => bibles.save(id, name, json));
+ipcMain.handle('bibles:read', (_e, id) => bibles.read(id));
+ipcMain.handle('bibles:remove', (_e, id) => bibles.remove(id));
 ipcMain.handle('models:remove', (_e, id) => { models.remove(id); return models.list(); });
 ipcMain.handle('models:url', (_e, id) => `${models.BASE}/${models.MODELS[id].folder}.tar.bz2`);
 ipcMain.handle('ndi:config', (_e, cfg) => applyNdi(cfg));
 
 app.whenReady().then(() => {
   models.setModelsDir(path.join(app.getPath('userData'), 'models'));
+  bibles.setDir(path.join(app.getPath('userData'), 'bibles'));
   startWebServer();
   createOperator();
   setupUpdates();

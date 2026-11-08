@@ -7,7 +7,13 @@ const models = require('./models.cjs');
 
 let sherpa = null;
 function lib() {
-  if (!sherpa) sherpa = require('sherpa-onnx-node');
+  if (!sherpa) {
+    try {
+      sherpa = require('sherpa-onnx-node');
+    } catch (e) {
+      throw new Error('The offline speech engine is missing from this build. On the build PC run "npm.cmd install", then build again. (' + e.message.split('\n')[0] + ')');
+    }
+  }
   return sherpa;
 }
 

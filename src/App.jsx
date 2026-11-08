@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { BOOKS, parseQuery, suggestBooks } from '../shared/bibleRef.js';
-import { TRANSLATIONS, loadBible, verseText, refLabel, sameRef, searchText } from './bible.js';
+import { TRANSLATIONS, loadBible, verseText, refLabel, sameRef, searchText, importedBibles } from './bible.js';
+import ImportBible from './ImportBible.jsx';
 import { BUILTIN_THEMES, imageFileToDataUrl } from './themes.js';
 import { Slide, Stage } from './Slide.jsx';
 import LivePanel from './LivePanel.jsx';
@@ -37,6 +38,10 @@ function step(bible, ref, dir) {
 
 export default function App() {
   const [tid, setTid] = usePersist('translation', 'KJV');
+  const [imported, setImported] = useState([]);
+  const [showImport, setShowImport] = useState(false);
+  useEffect(() => { importedBibles().then(setImported); }, []);
+  const allTranslations = [...TRANSLATIONS, ...imported];
   const [bible, setBible] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [nav, setNav] = usePersist('nav', { book: 42, chapter: 3 });
@@ -344,8 +349,11 @@ export default function App() {
         <div className="brand" title="Church Presenter"><span className="brand-mark">◆</span><span className="brand-name">Church Presenter</span></div>
         <div className="tb-group">
           <span className="tb-label">Bible</span>
-          <select className="dropdown narrow" value={tid} onChange={(e) => setTid(e.target.value)} title={TRANSLATIONS.find((t) => t.id === tid)?.name}>
+          <select className="dropdown narrow" value={tid} onChange={(e) => (e.target.value === '__import' ? setShowImport(true) : setTid(e.target.value))} title={allTranslations.find((t) => t.id === tid)?.name}>
             {TRANSLATIONS.map((t) => <option key={t.id} value={t.id} title={t.name}>{t.id}</option>)}
+            {imported.length > 0 && <option disabled>──────</option>}
+            {imported.map((t) => <option key={t.id} value={t.id} title={t.name}>{t.id}</option>)}
+            <option value="__import">+ Import…</option>
           </select>
         </div>
         <div className="tb-group">
@@ -603,6 +611,15 @@ export default function App() {
           </span>
         )}
       </footer>
+
+      {showImport && (
+        <ImportBible
+          imported={imported}
+          onClose={() => setShowImport(false)}
+          onImported={async (id) => { setImported(await importedBibles()); setTid(id); setShowImport(false); flash(`${id} imported`); }}
+          onRemoved={(list, id) => { setImported(list); if (tid === id) setTid('KJV'); flash(`${id} removed`); }}
+        />
+      )}
 
       {showOutputs && (
         <div className="modal-bg" onClick={() => setShowOutputs(false)}>
