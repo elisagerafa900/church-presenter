@@ -1,0 +1,7 @@
+node_modules
+dist
+release
+*.log
+.env
+# NDI runtime: allowed inside installers, not in a public repo
+vendor/ndi/*.dll
