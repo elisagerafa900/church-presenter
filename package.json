@@ -10,14 +10,18 @@
     "build": "vite build",
     "start": "vite build && electron .",
     "dist": "vite build && electron-builder --win",
-    "test": "node shared/bibleRef.test.js && node shared/detector.test.js",
+    "test": "node shared/bibleRef.test.js && node shared/detector.test.js && node shared/bibleImport.test.js",
     "release": "vite build && electron-builder --win --publish always"
   },
   "build": {
     "appId": "org.church.presenter",
     "productName": "Church Presenter",
     "files": [
-      "dist/**",
+      "dist/**/*",
+      "!dist/**/*.7z",
+      "!dist/**/*.exe",
+      "!dist/**/*.blockmap",
+      "!dist/**/*.yml",
       "electron/**",
       "package.json"
     ],
@@ -50,7 +54,11 @@
         "repo": "church-presenter-releases",
         "releaseType": "release"
       }
-    ]
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    }
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
