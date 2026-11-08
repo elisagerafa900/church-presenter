@@ -40,13 +40,23 @@ async function yvGet(key, path, params) {
   }
   if (!res.ok) {
     const code = res.status;
+    // YouVersion's own explanation (helps when settings are refused)
+    let detail = '';
+    try {
+      const body = await res.text();
+      try {
+        const j = JSON.parse(body);
+        detail = j.message || j.error?.message || j.error || j.detail || (Array.isArray(j.errors) ? j.errors.map((e) => e.message || e).join('; ') : '');
+      } catch { detail = body; }
+    } catch { /* no body */ }
+    detail = String(detail || '').replace(/\s+/g, ' ').trim().slice(0, 200);
     const msg =
       code === 401 ? 'YouVersion rejected the App Key. Check it in Bible → Add Bible → YouVersion.'
       : code === 403 ? 'Your App Key is not licensed for this Bible version.'
       : code === 404 ? 'YouVersion could not find that passage or version.'
       : code === 429 ? 'Too many requests to YouVersion — wait a moment.'
       : `YouVersion error ${code}.`;
-    const err = new Error(msg);
+    const err = new Error(detail && code !== 401 ? `${msg} (${detail})` : msg);
     err.code = code >= 500 || code === 429 ? 'NETWORK' : code; // server trouble counts like no internet
     throw err;
   }
@@ -58,7 +68,8 @@ async function listVersions(key, language = 'en') {
   const out = [];
   let token = null;
   for (let page = 0; page < 10; page++) {
-    const params = { 'language_ranges[]': [language], page_size: 100 };
+    // Same as YouVersion's own SDK: no page_size (server default), follow next_page_token
+    const params = { 'language_ranges[]': [String(language).trim().toLowerCase().replace(/_/g, '-')] };
     if (token) params.page_token = token;
     const r = await yvGet(key, '/v1/bibles', params);
     for (const v of r.data || []) {
