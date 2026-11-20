@@ -91,6 +91,24 @@ const SPOKEN_OK = new Set([
   'timothy', 'peter', 'john', 'ecclesiastics', 'philipians', 'isiah', 'apocalypse',
 ]);
 
+// How speech engines mis-hear book names in sermons (Nigerian and other accents).
+// Only used for the live transcript, and only when a chapter number follows.
+const SPOKEN_EXTRA = {
+  1: ['exodos', 'exudus'],
+  22: ['isaya', 'isaia'],
+  23: ['jeremaya'],
+  25: ['ezekeal', 'ezikiel'],
+  38: ['malaki', 'malachy', 'malakai', 'malaky', 'malachai', 'malakhi'],
+  43: ['acts', 'act', 'ax', 'axe', 'x', 'acs', 'aks'],
+  44: ['romance', 'roman'],
+  48: ['ephesian', 'efesians', 'ephesus'],
+  49: ['philippian', 'phillipians', 'filipians'],
+  50: ['colossian', 'colosians'],
+  57: ['hebrew'],
+  58: ['jame'],
+  65: ['revelations', 'revelation'],
+};
+
 const NUM_PREFIX = {
   1: ['1', '1st', 'i', 'first', 'one'],
   2: ['2', '2nd', 'ii', 'second', 'two'],
@@ -104,6 +122,7 @@ function aliasesFor(i, spoken) {
   for (const e of EXTRA[i] || []) {
     if (!spoken || SPOKEN_OK.has(e)) bases.add(e);
   }
+  if (spoken) for (const e of SPOKEN_EXTRA[i] || []) bases.add(e);
   const out = new Set();
   for (const b of bases) {
     if (m) {
@@ -181,11 +200,11 @@ function normalize(text) {
 // What may follow a book name.
 const TAIL = [
   // chapter 3 verse(s) 16(-18)   / chapter 3 and verse 16 / chapter 3 from verse 16
-  { re: /^\s*(?:chapter|chap|ch)\s*(\d+)\s*(?:,|and|from)?\s*(?:verses?|vs?|vv)\s*(\d+)(?:-(\d+))?/, ch: 1, v: 2, e: 3 },
+  { re: /^\s*(?:chapter|chap|ch)\s*(\d+)\s*(?:,|and|from)?\s*(?:verses?|versus|vis|vs?|vv)\s*(\d+)(?:-(\d+))?/, ch: 1, v: 2, e: 3 },
   // 3:16(-18)  3 : 16
   { re: /^\s*(\d+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?/, ch: 1, v: 2, e: 3 },
   // 3 verse 16 / 3 v 16 / 3 vs 16
-  { re: /^\s*(\d+)\s*(?:,)?\s*(?:verses?|vs?|vv)\s*(\d+)(?:-(\d+))?/, ch: 1, v: 2, e: 3 },
+  { re: /^\s*(\d+)\s*(?:,)?\s*(?:verses?|versus|vis|vs?|vv)\s*(\d+)(?:-(\d+))?/, ch: 1, v: 2, e: 3 },
   // 3 16(-18)  (spoken "John three sixteen")
   { re: /^\s*(\d+)\s+(\d+)(?:-(\d+))?(?!\s*:)/, ch: 1, v: 2, e: 3 },
   // chapter 3 / 3  (whole chapter)

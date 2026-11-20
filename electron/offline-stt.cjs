@@ -22,6 +22,11 @@ const cache = { id: null, recognizer: null };
 
 const SAMPLE_RATE = 16000;
 const WINDOW = 512; // silero VAD window
+// While someone is speaking, the last few seconds are re-read this often, so words
+// (and scripture references) appear while the sentence is still going.
+const PARTIAL_EVERY_MS = 450;
+const PARTIAL_MAX_SECONDS = 5;
+const PREROLL = Math.round(SAMPLE_RATE * 0.4);
 
 class OfflineStream extends EventEmitter {
   constructor({ model = 'parakeet' } = {}) {
@@ -33,6 +38,11 @@ class OfflineStream extends EventEmitter {
     this.queue = Promise.resolve();
     this.backlog = 0;
     this.speaking = false;
+    this.live = []; // Float32Array chunks of the phrase being spoken
+    this.liveLen = 0;
+    this.recent = new Float32Array(0); // short pre-roll before speech is detected
+    this.lastPartial = 0;
+    this.partialBusy = false;
   }
 
   async start() {
@@ -59,9 +69,9 @@ class OfflineStream extends EventEmitter {
           sileroVad: {
             model: models.vadPath(),
             threshold: 0.5,
-            minSilenceDuration: 0.35, // a short pause ends a phrase
+            minSilenceDuration: 0.3, // a short pause ends a phrase
             minSpeechDuration: 0.25,
-            maxSpeechDuration: 12, // preachers rarely pause: cut long runs anyway
+            maxSpeechDuration: 8, // preachers rarely pause: cut long runs anyway
             windowSize: WINDOW,
           },
           sampleRate: SAMPLE_RATE,
@@ -94,10 +104,61 @@ class OfflineStream extends EventEmitter {
     }
     this.pending = merged.slice(off);
 
+    const fresh = merged.subarray(merged.length - n); // the audio that just arrived
     const detected = this.vad.isDetected();
-    if (detected && !this.speaking) this.emit('result', { text: '…', isFinal: false });
+    if (detected && !this.speaking) {
+      this.emit('result', { text: '…', isFinal: false });
+      // start the live phrase with a little audio from just before speech was detected
+      this.live = [this.recent.slice()];
+      this.liveLen = this.recent.length;
+    }
+    if (detected) {
+      this.live.push(Float32Array.from(fresh));
+      this.liveLen += fresh.length;
+      // never keep more than needed for a partial
+      while (this.live.length > 1 && this.liveLen - this.live[0].length > SAMPLE_RATE * PARTIAL_MAX_SECONDS) this.liveLen -= this.live.shift().length;
+    }
+    // keep a short pre-roll of the latest audio
+    const both = new Float32Array(this.recent.length + fresh.length);
+    both.set(this.recent);
+    both.set(fresh, this.recent.length);
+    this.recent = both.slice(Math.max(0, both.length - PREROLL));
     this.speaking = detected;
     this.drain();
+    if (this.speaking) this.partial();
+  }
+
+  /** Re-read the phrase being spoken (its last few seconds) and send it as a partial result. */
+  partial() {
+    const now = Date.now();
+    if (this.partialBusy || this.backlog > 0 || now - this.lastPartial < PARTIAL_EVERY_MS) return;
+    if (this.liveLen < SAMPLE_RATE * 0.6) return;
+    this.lastPartial = now;
+    this.partialBusy = true;
+    const max = SAMPLE_RATE * PARTIAL_MAX_SECONDS;
+    const len = Math.min(this.liveLen, max);
+    const samples = new Float32Array(len);
+    let pos = len;
+    for (let i = this.live.length - 1; i >= 0 && pos > 0; i--) {
+      const c = this.live[i];
+      const take = Math.min(c.length, pos);
+      samples.set(c.subarray(c.length - take), pos - take);
+      pos -= take;
+    }
+    // same queue as finished phrases, so two decodes never run at once
+    this.queue = this.queue.then(async () => {
+      try {
+        const rec = cache.recognizer;
+        const stream = rec.createStream();
+        stream.acceptWaveform({ samples, sampleRate: SAMPLE_RATE });
+        const res = await rec.decodeAsync(stream);
+        const text = (res?.text || '').trim();
+        // a finished phrase may have arrived meanwhile; then this partial is stale
+        if (text && this.running && this.speaking) this.emit('result', { text, isFinal: false });
+      } catch { /* a skipped partial is harmless */ } finally {
+        this.partialBusy = false;
+      }
+    });
   }
 
   drain() {
@@ -106,6 +167,7 @@ class OfflineStream extends EventEmitter {
       this.vad.pop();
       const samples = Float32Array.from(seg.samples);
       this.transcribe(samples);
+      this.live = []; this.liveLen = 0;
     }
   }
 

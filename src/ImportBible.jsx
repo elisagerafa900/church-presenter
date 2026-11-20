@@ -118,10 +118,10 @@ function OfflineCopies({ onSaved }) {
                 <span />
               </label>
             </div>
-            {st && !st.available && <div className="muted small">Offline copies need Windows secure storage, which isn’t available on this PC.</div>}
+            {st && !st.available && <div className="muted small">Offline copies need secure storage (Windows, or a keyring such as GNOME Keyring / KWallet on Linux), which isn’t available on this PC.</div>}
             {confirming === v.yvId && (
               <div className="notice slim">
-                Only switch this on if the licence for <b>{v.abbreviation}</b> allows storing it offline. The copy is encrypted for this Windows user, re-checked with YouVersion when online, and deleted if access ends or it isn’t re-checked for {st?.maxAgeDays || 60} days.
+                Only switch this on if the licence for <b>{v.abbreviation}</b> allows storing it offline. The copy is encrypted for this user account, re-checked with YouVersion when online, and deleted if access ends or it isn’t re-checked for {st?.maxAgeDays || 60} days.
                 <div className="row end">
                   <button className="btn small ghost" onClick={() => setConfirming(null)}>Cancel</button>
                   <button className="btn small primary" onClick={() => setOffline(v.yvId, true)}>Our licence allows it — turn on</button>

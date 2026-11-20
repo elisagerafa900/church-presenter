@@ -13,7 +13,10 @@ let enc = null; // { encrypt(str) -> Buffer, decrypt(Buffer) -> str }
 function setup(dir, safeStorage) {
   root = dir;
   fs.mkdirSync(root, { recursive: true });
-  if (safeStorage?.isEncryptionAvailable?.()) {
+  // Linux without a keyring (GNOME Keyring / KWallet) falls back to a fixed password: not secure enough
+  const backend = process.platform === 'linux' ? safeStorage?.getSelectedStorageBackend?.() : null;
+  const weakLinux = process.platform === 'linux' && (!backend || backend === 'basic_text' || backend === 'unknown');
+  if (safeStorage?.isEncryptionAvailable?.() && !weakLinux) {
     enc = { encrypt: (s) => safeStorage.encryptString(s), decrypt: (b) => safeStorage.decryptString(b) };
   } else {
     enc = null; // no secure storage on this PC: offline copies are disabled

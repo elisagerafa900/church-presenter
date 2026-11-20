@@ -101,6 +101,20 @@ npm.cmd test        # parser + detector tests
 For NDI while developing, put `Processing.NDI.Lib.x64.dll` in `vendor/ndi/` (see the README there).
 Please don't commit that DLL, API keys, or copyrighted Bible texts (NIV, NKJV, …).
 
+## Linux
+Two packages are built (64-bit Intel/AMD):
+- **AppImage** — works on most distributions, no install:
+  `chmod +x Church-Presenter-*.AppImage && ./Church-Presenter-*.AppImage`
+  (Ubuntu 22.04+ may need `sudo apt install libfuse2` — on 24.04 the package is `libfuse2t64`.)
+  The AppImage updates itself from GitHub Releases like the Windows app.
+- **.deb** — Ubuntu / Debian / Mint: `sudo apt install ./Church-Presenter-*-amd64.deb`
+  (update by installing the newer .deb).
+
+Build on a Linux PC: `npm install`, then `npm run dist:linux` (packages appear in `release/`),
+or `GH_TOKEN=... npm run release:linux` to publish them to GitHub Releases.
+Notes: NDI needs `libndi.so.6` (see `vendor/ndi/README.txt`); offline copies of online Bibles need
+a keyring (GNOME Keyring / KWallet); offline speech models unpack with the system `tar` + `bzip2`.
+
 ## Releasing updates (GitHub)
 Installers are published to the public repo **elisagerafa900/church-presenter-releases**.
 Church PCs check it when the app starts (and every 4 hours), download new versions in the

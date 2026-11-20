@@ -19,3 +19,16 @@ The NDI SDK licence allows shipping this DLL inside your app. Its conditions:
     (the app does this in Outputs -> NDI).
   - Ship the DLL unchanged.
   - Read the licence included with the SDK for the full terms.
+
+
+Linux
+=====
+Put this file in this folder instead:
+
+    libndi.so.6
+
+Where to get it: ndi.video -> For Developers -> "NDI SDK for Linux". Run the downloaded
+installer script, then copy  lib/x86_64-linux-gnu/libndi.so.6.*  into this folder and
+name it  libndi.so.6 .  `npm run dist:linux` then packs it into the AppImage / .deb.
+Without it, the app also looks for an NDI runtime already installed on the system
+(/usr/lib, /usr/local/lib). The browser-source output works with no NDI at all.

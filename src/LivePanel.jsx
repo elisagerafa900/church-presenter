@@ -36,6 +36,7 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
   const [micId, setMicId] = usePersist('micId', '');
   const [noise, setNoise] = usePersist('noiseSuppression', true);
   const [autoPresent, setAutoPresent] = usePersist('autoPresent', false);
+  const [autoMin, setAutoMin] = usePersist('autoPresentMin', 90); // put on screen when confidence is at least this
   const [keyDraft, setKeyDraft] = useState('');
   const [keyMsg, setKeyMsg] = useState('');
   const [testing, setTesting] = useState(false);
@@ -56,6 +57,9 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
   const unseenRef = useRef(0);
   const autoRef = useRef(autoPresent);
   autoRef.current = autoPresent;
+  const autoMinRef = useRef(autoMin);
+  autoMinRef.current = autoMin;
+  useEffect(() => { detectorRef.current?.setMinConfidence(autoPresent ? autoMin : 50); }, [autoMin, autoPresent]);
   const presentRef = useRef(present);
   presentRef.current = present;
   const hiddenRef = useRef(hidden);
@@ -64,7 +68,10 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
   const listening = state !== 'off' && state !== 'stopped';
 
   useEffect(() => {
-    if (bible && !detectorRef.current) detectorRef.current = new ScriptureDetector(bible.books);
+    if (bible && !detectorRef.current) {
+      detectorRef.current = new ScriptureDetector(bible.books);
+      detectorRef.current.setMinConfidence(autoRef.current ? autoMinRef.current : 50);
+    }
   }, [bible]);
   // Follow what the operator shows, so "verse 17" means the right chapter
   useEffect(() => { if (live) detectorRef.current?.setContext(live); }, [live]);
@@ -136,16 +143,24 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
         setError(ev.message);
         if (ev.fatal) stopListening(true);
       } else if (ev.type === 'result') {
-        if (!ev.isFinal) { setInterim(ev.text); return; }
-        setInterim('');
-        if (!ev.text.trim()) return;
         const now = Date.now();
-        setFinals((f) => [...f.slice(-300), { id: now + Math.random(), text: ev.text, at: now }]);
-        const found = detectorRef.current?.feed(ev.text, now) || [];
+        let found;
+        if (!ev.isFinal) {
+          setInterim(ev.text);
+          // Act on a reference as soon as it is complete, without waiting for the end of the sentence.
+          found = detectorRef.current?.feedInterim(ev.text, now) || [];
+          if (!found.length) return;
+        } else {
+          setInterim('');
+          if (!ev.text.trim()) return;
+          setFinals((f) => [...f.slice(-300), { id: now + Math.random(), text: ev.text, at: now }]);
+          found = detectorRef.current?.feed(ev.text, now) || [];
+        }
         if (found.length) {
           setDetections((d) => [...found.slice().reverse(), ...d].slice(0, 60));
-          const best = found[found.length - 1];
-          if (autoRef.current && best.confidence >= 90) {
+          // the most certain one wins if several came at once
+          const best = found.reduce((a, b) => (b.confidence >= a.confidence ? b : a));
+          if (autoRef.current && best.confidence >= autoMinRef.current) {
             presentRef.current(best.ref);
           } else if (hiddenRef.current) {
             setPopup(best);
@@ -178,7 +193,7 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
     } catch (e) {
       api.sttStop();
       setState('off');
-      setError(e?.name === 'NotAllowedError' ? 'Windows blocked the microphone. Allow it in Settings → Privacy → Microphone.' : `Microphone problem: ${e.message}`);
+      setError(e?.name === 'NotAllowedError' ? 'The system blocked the microphone. Allow microphone access for this app in your system settings.' : `Microphone problem: ${e.message}`);
     }
   }
 
@@ -304,12 +319,26 @@ export default function LivePanel({ hidden, bible, live, present, addToQueue, on
             <div className="ls-row">
               <label>Microphone</label>
               <select className="dropdown" value={micId} onChange={(e) => setMicId(e.target.value)} disabled={listening}>
-                <option value="">Windows default</option>
+                <option value="">System default</option>
                 {mics.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
             </div>
             <label className="ls-check"><input type="checkbox" checked={noise} onChange={(e) => setNoise(e.target.checked)} disabled={listening} /> Reduce background noise</label>
-            <label className="ls-check"><input type="checkbox" checked={autoPresent} onChange={(e) => setAutoPresent(e.target.checked)} /> Put named verses on screen automatically (95% only)</label>
+            <label className="ls-check"><input type="checkbox" checked={autoPresent} onChange={(e) => setAutoPresent(e.target.checked)} /> Put detected verses on screen automatically</label>
+            <div className="ls-row auto-min">
+              <span className={autoPresent ? '' : 'muted'}>When at least</span>
+              <div className="seg-mini">
+                {[40, 50, 60, 70, 80, 90, 95].map((n) => (
+                  <button key={n} type="button" disabled={!autoPresent} className={autoMin === n ? 'on' : ''} onClick={() => setAutoMin(n)}>{n}%+</button>
+                ))}
+              </div>
+            </div>
+            <div className="muted small">
+              {autoMin >= 95 ? 'Only references said clearly (e.g. "John 3:16").'
+                : autoMin >= 85 ? 'References and whole chapters. Quoted verses wait for you.'
+                  : autoMin >= 70 ? 'Also "verse 17" after a chapter is open, and strong quotes.'
+                    : 'Also verses quoted without saying the reference. Lower = faster but more wrong guesses.'}
+            </div>
             <div className="muted small">Quoted-verse matching: {quotesReady ? 'ready' : 'getting ready…'}</div>
           </div>
         )}

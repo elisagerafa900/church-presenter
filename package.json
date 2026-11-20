@@ -1,7 +1,7 @@
 {
   "name": "church-presenter",
   "productName": "Church Presenter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Scripture presenter with live sermon transcription (Phase 1: presenter core)",
   "type": "module",
   "main": "electron/main.cjs",
@@ -11,7 +11,9 @@
     "start": "vite build && electron .",
     "dist": "vite build && electron-builder --win",
     "test": "node shared/bibleRef.test.js && node shared/detector.test.js && node shared/bibleImport.test.js && node electron/yvoffline.test.cjs",
-    "release": "vite build && electron-builder --win --publish always"
+    "release": "vite build && electron-builder --win --publish always",
+    "dist:linux": "vite build && electron-builder --linux",
+    "release:linux": "vite build && electron-builder --linux --publish always"
   },
   "build": {
     "appId": "org.church.presenter",
@@ -38,6 +40,7 @@
         "to": "ndi",
         "filter": [
           "*.dll",
+          "libndi.so*",
           "*.txt"
         ]
       }
@@ -58,6 +61,34 @@
     "directories": {
       "output": "release",
       "buildResources": "build"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "build/icon.png",
+      "synopsis": "Scripture presenter with live sermon transcription",
+      "description": "Bible presenter for churches: projector, NDI and OBS outputs, and live sermon transcription that detects scriptures.",
+      "maintainer": "Elisha",
+      "executableName": "church-presenter",
+      "artifactName": "Church-Presenter-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "bzip2",
+        "tar"
+      ]
     }
   },
   "devDependencies": {

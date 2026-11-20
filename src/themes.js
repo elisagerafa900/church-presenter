@@ -32,8 +32,8 @@ export const BUILTIN_THEMES = [
 ];
 
 export const FONTS = {
-  sans: '"Segoe UI", "Helvetica Neue", Arial, sans-serif',
-  serif: 'Georgia, Cambria, "Times New Roman", serif',
+  sans: '"Segoe UI", "Helvetica Neue", Ubuntu, "Noto Sans", "DejaVu Sans", Arial, sans-serif',
+  serif: 'Georgia, Cambria, "Times New Roman", "Noto Serif", "DejaVu Serif", serif',
 };
 
 /** Resize a picked image to max 1920 wide JPEG so it stays light. */

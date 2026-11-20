@@ -34,7 +34,13 @@ function candidatePaths() {
   } else if (process.platform === 'darwin') {
     out.push('/usr/local/lib/libndi.dylib', '/Library/NDI SDK for Apple/lib/macOS/libndi.dylib');
   } else {
-    out.push('libndi.so.6', 'libndi.so.5', '/usr/lib/libndi.so', '/usr/local/lib/libndi.so');
+    // Linux: bundled with the app, the project's vendor/ndi folder (development), then a system install
+    for (const name of ['libndi.so.6', 'libndi.so.5', 'libndi.so']) {
+      if (process.resourcesPath) out.push(path.join(process.resourcesPath, 'ndi', name));
+      out.push(path.join(__dirname, '..', 'vendor', 'ndi', name));
+    }
+    if (process.env.NDI_RUNTIME_DIR_V6) out.push(path.join(process.env.NDI_RUNTIME_DIR_V6, 'libndi.so.6'));
+    out.push('libndi.so.6', 'libndi.so.5', '/usr/lib/libndi.so', '/usr/local/lib/libndi.so', '/usr/lib/x86_64-linux-gnu/libndi.so.6');
   }
   return out;
 }
@@ -58,7 +64,9 @@ function load() {
     } catch { /* try next */ }
   }
   if (!lib) {
-    loadError = 'NDI file missing: put Processing.NDI.Lib.x64.dll in the vendor/ndi folder (see vendor/ndi/README.txt).';
+    loadError = process.platform === 'win32'
+      ? 'NDI file missing: put Processing.NDI.Lib.x64.dll in the vendor/ndi folder (see vendor/ndi/README.txt).'
+      : 'NDI library missing: put libndi.so.6 (from the NDI SDK for Linux) in vendor/ndi, or install the NDI runtime (see vendor/ndi/README.txt).';
     return false;
   }
   try {

@@ -13,6 +13,12 @@ export class ScriptureDetector {
     this.lastSeen = new Map(); // ref key -> time
     this.quoteIndex = null;
     this.window = []; // last words spoken, for quote matching
+    this.quoteMin = QUOTE_MIN_CONFIDENCE;
+  }
+
+  /** Lowest confidence worth reporting for quoted verses (the operator's auto-present level can go lower). */
+  setMinConfidence(n) {
+    this.quoteMin = Math.max(30, Math.min(QUOTE_MIN_CONFIDENCE, Number(n) || QUOTE_MIN_CONFIDENCE));
   }
 
   /** Turn on quote matching (a QuoteIndex built from the Bibles). */
@@ -23,6 +29,44 @@ export class ScriptureDetector {
   /** Call when the operator shows a verse, so "verse 17" follows what's on screen. */
   setContext(ref) {
     if (ref) this.context = { book: ref.book, chapter: ref.chapter };
+  }
+
+  /**
+   * Feed the words being spoken right now (not finished yet). Returns detections only for
+   * references that are complete: the same reference is still found without the last word,
+   * so "Luke 24 verse forty…" never shows 24:40 before "…seven" arrives.
+   * Only direct references with a verse count here; chapters and quotes wait for the finished text.
+   */
+  feedInterim(text, now = Date.now()) {
+    if (!text || !text.trim() || text === '…') return [];
+    const joined = `${this.prevTail} ${text}`.trim();
+    const words = joined.split(/\s+/);
+    if (words.length < 3) return [];
+    const opts = { spoken: true, books: this.books, context: null };
+    const full = findReferences(joined, opts).filter((r) => r.verse !== null);
+    if (!full.length) return [];
+    const shorter = new Set(findReferences(words.slice(0, -1).join(' '), opts).filter((r) => r.verse !== null).map(formatRef));
+    const out = [];
+    for (const r of full) {
+      const key = formatRef(r);
+      if (!shorter.has(key)) continue; // still being said
+      const seen = this.lastSeen.get(key);
+      if (seen && now - seen < this.repeatMs) continue;
+      this.lastSeen.set(key, now);
+      this.context = { book: r.book, chapter: r.chapter };
+      out.push({
+        id: `${key}@${now}`,
+        ref: { book: r.book, chapter: r.chapter, verse: r.verse },
+        endVerse: r.endVerse ?? null,
+        label: key,
+        heard: r.text,
+        kind: 'verse',
+        confidence: 95,
+        early: true,
+        at: now,
+      });
+    }
+    return out;
   }
 
   /** Feed one finished piece of transcript. Returns new detections (newest last). */
@@ -58,7 +102,7 @@ export class ScriptureDetector {
     if (this.quoteIndex && out.length === 0) {
       for (const m of this.quoteIndex.matchAll(this.window.join(' '), 3)) {
         const confidence = quoteConfidence(m);
-        if (confidence < QUOTE_MIN_CONFIDENCE) break;
+        if (confidence < this.quoteMin) break;
         const key = formatRef(m.ref);
         const seen = this.lastSeen.get(key);
         // Best match is the verse we just found: the preacher is still reading it.

@@ -50,5 +50,21 @@ eq('direct ref wins', q('Isaiah 40 verse 31 they that wait upon the Lord shall r
 const qa = await QuoteIndex.create(['KJV'].map(load));
 eq('async build', qa.match('in the beginning God created the heaven and the earth')?.ref, { book: 0, chapter: 1, verse: 1 });
 
+// Early detection while the words are still coming in
+const d5 = new ScriptureDetector(books);
+let t5 = 0;
+const early = (s) => d5.feedInterim(s, (t5 += 700)).map((x) => x.label);
+eq('early: book only', early('so let us look at Luke'), []);
+eq('early: number still coming', early('so let us look at Luke twenty four verse forty'), []);
+eq('early: complete once next word arrives', early('so let us look at Luke twenty four verse forty seven Luke'), ['Luke 24:47']);
+eq('early: not again from interim', early('so let us look at Luke twenty four verse forty seven Luke 24 47'), []);
+eq('early: not again when final arrives', d5.feed('So let us look at Luke 24:47. Luke 24:47.', (t5 += 700)).map((x) => x.label), []);
+eq('early: misheard Acts', early('it says X1 vis4. He says'), ['Acts 1:4']);
+eq('early: Malachi mid-sentence', early('you see that thing in Malachi 3:3 he will sit'), ['Malachi 3:3']);
+eq('early: chapter only waits', early('turn with me to Hebrews eleven and'), []);
+eq('early: colon form', early('look at Exodus 4:10 I never knew'), ['Exodus 4:10']);
+eq('early: 2 Corinthians', early('2 Corinthians 12 verse 7. Just one more'), ['2 Corinthians 12:7']);
+eq('early: James', early('look at James 1:2. Are you'), ['James 1:2']);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

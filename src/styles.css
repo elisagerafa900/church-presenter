@@ -20,8 +20,8 @@
   --ok: #59d499;
   --warn: #f5a524;
   --radius: 6px;
-  --label-font: Bahnschrift, "DIN Alternate", "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --label-font: Bahnschrift, "DIN Alternate", "Segoe UI Semibold", "Segoe UI", "Ubuntu Condensed", "Roboto Condensed", "Noto Sans", system-ui, sans-serif;
+  font-family: "Segoe UI", Ubuntu, "Noto Sans", system-ui, -apple-system, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
@@ -367,3 +367,11 @@ kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: var(--panel-3)
 .yv-off-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .yv-off-actions .grow { flex: 1; min-width: 80px; }
 .meter.dl div { background: var(--gold); }
+
+/* auto-present level */
+.auto-min { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.seg-mini { display: inline-flex; border: 1px solid var(--line, #333); border-radius: 8px; overflow: hidden; }
+.seg-mini button { border: 0; background: transparent; color: inherit; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; border-right: 1px solid var(--line, #333); }
+.seg-mini button:last-child { border-right: 0; }
+.seg-mini button.on { background: var(--gold, #e0b04a); color: #111; }
+.seg-mini button:disabled { opacity: .45; cursor: default; }
