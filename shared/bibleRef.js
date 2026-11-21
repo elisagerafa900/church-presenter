@@ -241,7 +241,13 @@ export function findReferences(text, opts = {}) {
       if (!t.v && books && books[book] && books[book].chapters.length === 1 && chapter > 1) {
         verse = chapter;
       }
-      const ref = validate({ book, chapter: verse !== null && !t.v ? 1 : chapter, verse, endVerse }, books);
+      let ref = validate({ book, chapter: verse !== null && !t.v ? 1 : chapter, verse, endVerse }, books);
+      // Speech engines drop the colon: "Malachi 33" is Malachi 3:3, "John 316" is John 3:16.
+      // Only when the number can't be a chapter, and only when exactly one split makes sense.
+      if (!ref && !t.v && verse === null && books && books[book] && chapter > books[book].chapters.length) {
+        const ok = splitChapterVerse(String(mm[t.ch]), book, books);
+        if (ok) ref = { ...ok, split: true };
+      }
       if (ref) {
         out.push({ ...ref, index: hit.index, text: (hit[0] + mm[0]).trim() });
         m.re.lastIndex = hit.index + hit[0].length + mm[0].length;
@@ -258,6 +264,17 @@ export function findReferences(text, opts = {}) {
     }
   }
   return out;
+}
+
+function splitChapterVerse(digits, book, books) {
+  const found = [];
+  for (let k = 1; k < digits.length; k++) {
+    const c = digits.slice(0, k), v = digits.slice(k);
+    if (v.startsWith('0')) continue;
+    const r = validate({ book, chapter: +c, verse: +v, endVerse: null }, books);
+    if (r) found.push(r);
+  }
+  return found.length === 1 ? found[0] : null;
 }
 
 function validate(ref, books) {

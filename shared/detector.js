@@ -81,7 +81,7 @@ export class ScriptureDetector {
         label: key,
         heard: r.text,
         kind: 'verse',
-        confidence: 95,
+        confidence: r.split ? 90 : 95,
         early: true,
         at: now,
       });
@@ -115,7 +115,7 @@ export class ScriptureDetector {
         label: key,
         heard: r.text,
         kind: r.fromContext ? 'context' : r.verse ? 'verse' : 'chapter',
-        confidence: check === 'doubtful' ? DOUBTFUL_REPEAT_CONFIDENCE : r.fromContext ? 75 : r.verse ? 95 : 85,
+        confidence: check === 'doubtful' ? DOUBTFUL_REPEAT_CONFIDENCE : r.fromContext ? 75 : r.split ? 90 : r.verse ? 95 : 85,
         ...(check === 'doubtful' ? { note: 'maybe misheard repeat' } : {}),
         at: now,
       });

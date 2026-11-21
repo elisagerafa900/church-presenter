@@ -81,5 +81,16 @@ let t7 = 0;
 eq('repeat: early skips doubtful', [d7.feedInterim('now look at Acts 1 verse 4. Acts', (t7 += 700)).map((x) => x.label), d7.feedInterim('now look at Acts 1 verse 4. Acts 1 verse 1. And being', (t7 += 2000)).map((x) => x.label)], [['Acts 1:4'], []]);
 eq('repeat: other book right after is fine', d7.feed('Compare Luke 24 verse 49', (t7 += 2000)).map((x) => x.label), ['Luke 24:49']);
 
+// Colon dropped by the speech engine
+const d8 = new ScriptureDetector(books);
+let t8 = 0;
+const f8 = (s) => new ScriptureDetector(books).feed(s, (t8 += 60000)).map((x) => `${x.label}|${x.confidence}`);
+eq('split: Malachi 33', f8('You see that thing in Malachi 33, he will sit as a refiner'), ['Malachi 3:3|90']);
+eq('split: John 316', f8('John 316 says for God so loved'), ['John 3:16|90']);
+eq('split: Luke 2447', f8('look at Luke 2447'), ['Luke 24:47|90']);
+eq('split: real chapter stays', f8('Psalm 119 is long'), ['Psalms 119|85']);
+eq('split: ambiguous is ignored', f8('Genesis 123 is'), []);
+eq('split: early Malachi 33', d8.feedInterim('the thing in Malachi 33 he will sit', (t8 += 60000)).map((x) => `${x.label}|${x.confidence}`), ['Malachi 3:3|90']);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
