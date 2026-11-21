@@ -4,6 +4,9 @@
 import { findReferences, formatRef } from './bibleRef.js';
 import { quoteConfidence, QUOTE_MIN_CONFIDENCE } from './quotes.js';
 
+const REPEAT_WINDOW_MS = 15000;
+const DOUBTFUL_REPEAT_CONFIDENCE = 70;
+
 export class ScriptureDetector {
   constructor(books, { repeatMs = 45000 } = {}) {
     this.books = books;
@@ -14,6 +17,21 @@ export class ScriptureDetector {
     this.quoteIndex = null;
     this.window = []; // last words spoken, for quote matching
     this.quoteMin = QUOTE_MIN_CONFIDENCE;
+    this.lastDirect = null; // last book+chapter+verse said in full, for catching misheard repeats
+  }
+
+  /**
+   * Preachers repeat a reference ("Luke 24:47, Luke 24:47") and the second time the speech engine
+   * can mishear the number ("Luke 24 verse 7"). A different verse of the same chapter, said in full
+   * within a few seconds, is most likely that: keep it in the list but never put it on screen by itself.
+   * Saying just the chapter again ("Acts 1") right after a verse in it is not a new scripture at all.
+   */
+  _repeatCheck(r, now) {
+    const l = this.lastDirect;
+    if (!l || r.fromContext || r.book !== l.book || r.chapter !== l.chapter) return 'new';
+    if (r.verse === null || r.verse === undefined) return now - l.at < 60000 ? 'skip' : 'new';
+    if (r.verse !== l.verse && now - l.at < REPEAT_WINDOW_MS) return 'doubtful';
+    return 'new';
   }
 
   /** Lowest confidence worth reporting for quoted verses (the operator's auto-present level can go lower). */
@@ -52,7 +70,9 @@ export class ScriptureDetector {
       if (!shorter.has(key)) continue; // still being said
       const seen = this.lastSeen.get(key);
       if (seen && now - seen < this.repeatMs) continue;
+      if (this._repeatCheck(r, now) !== 'new') continue; // let the finished text decide
       this.lastSeen.set(key, now);
+      this.lastDirect = { book: r.book, chapter: r.chapter, verse: r.verse, at: now };
       this.context = { book: r.book, chapter: r.chapter };
       out.push({
         id: `${key}@${now}`,
@@ -81,8 +101,13 @@ export class ScriptureDetector {
       const key = formatRef(r);
       const seen = this.lastSeen.get(key);
       if (seen && now - seen < this.repeatMs) continue;
+      const check = this._repeatCheck(r, now);
+      if (check === 'skip') continue;
       this.lastSeen.set(key, now);
-      this.context = { book: r.book, chapter: r.chapter };
+      if (check === 'new') {
+        this.context = { book: r.book, chapter: r.chapter };
+        if (r.verse && !r.fromContext) this.lastDirect = { book: r.book, chapter: r.chapter, verse: r.verse, at: now };
+      }
       out.push({
         id: `${key}@${now}`,
         ref: { book: r.book, chapter: r.chapter, verse: r.verse ?? 1 },
@@ -90,7 +115,8 @@ export class ScriptureDetector {
         label: key,
         heard: r.text,
         kind: r.fromContext ? 'context' : r.verse ? 'verse' : 'chapter',
-        confidence: r.fromContext ? 75 : r.verse ? 95 : 85,
+        confidence: check === 'doubtful' ? DOUBTFUL_REPEAT_CONFIDENCE : r.fromContext ? 75 : r.verse ? 95 : 85,
+        ...(check === 'doubtful' ? { note: 'maybe misheard repeat' } : {}),
         at: now,
       });
     }

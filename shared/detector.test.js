@@ -66,5 +66,20 @@ eq('early: colon form', early('look at Exodus 4:10 I never knew'), ['Exodus 4:10
 eq('early: 2 Corinthians', early('2 Corinthians 12 verse 7. Just one more'), ['2 Corinthians 12:7']);
 eq('early: James', early('look at James 1:2. Are you'), ['James 1:2']);
 
+// Misheard repeats (real sermon: "Luke 24 verse 47. Luke 24 verse 7.")
+const d6 = new ScriptureDetector(books);
+let t6 = 0;
+const f6 = (s) => d6.feed(s, (t6 += 3000)).map((x) => `${x.label}|${x.confidence}`);
+eq('repeat: first one', f6("So let's look at it. Luke 24 verse 47."), ['Luke 24:47|95']);
+eq('repeat: misheard second is doubtful', f6('Luke 24 verse 7. We are going to read up to the end of it.'), ['Luke 24:7|70']);
+eq('repeat: next verse by number still works', f6('Verse 48. And ye are witnesses'), ['Luke 24:48|75']);
+eq('repeat: chapter said again is ignored', f6("and then we'll read Luke 24 again"), []);
+t6 += 20000;
+eq('repeat: another verse later is fine', f6('Now Luke 24 verse 49.'), ['Luke 24:49|95']);
+const d7 = new ScriptureDetector(books);
+let t7 = 0;
+eq('repeat: early skips doubtful', [d7.feedInterim('now look at Acts 1 verse 4. Acts', (t7 += 700)).map((x) => x.label), d7.feedInterim('now look at Acts 1 verse 4. Acts 1 verse 1. And being', (t7 += 2000)).map((x) => x.label)], [['Acts 1:4'], []]);
+eq('repeat: other book right after is fine', d7.feed('Compare Luke 24 verse 49', (t7 += 2000)).map((x) => x.label), ['Luke 24:49']);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

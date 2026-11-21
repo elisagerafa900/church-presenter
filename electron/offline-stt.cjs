@@ -24,7 +24,7 @@ const SAMPLE_RATE = 16000;
 const WINDOW = 512; // silero VAD window
 // While someone is speaking, the last few seconds are re-read this often, so words
 // (and scripture references) appear while the sentence is still going.
-const PARTIAL_EVERY_MS = 450;
+const PARTIAL_EVERY_MS = 450; // fastest; slower PCs back off automatically (see partialGap)
 const PARTIAL_MAX_SECONDS = 5;
 const PREROLL = Math.round(SAMPLE_RATE * 0.4);
 
@@ -43,6 +43,7 @@ class OfflineStream extends EventEmitter {
     this.recent = new Float32Array(0); // short pre-roll before speech is detected
     this.lastPartial = 0;
     this.partialBusy = false;
+    this.partialGap = PARTIAL_EVERY_MS;
   }
 
   async start() {
@@ -57,7 +58,8 @@ class OfflineStream extends EventEmitter {
           featConfig: { sampleRate: SAMPLE_RATE, featureDim: 80 },
           modelConfig: {
             ...models.MODELS[this.modelId].config(d),
-            numThreads: Math.max(1, Math.min(4, os.cpus().length - 1)),
+            // leave half the PC for OBS/vMix and the audio itself: a starved PC garbles the sound
+            numThreads: Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))),
             provider: 'cpu',
             debug: 0,
           },
@@ -131,7 +133,7 @@ class OfflineStream extends EventEmitter {
   /** Re-read the phrase being spoken (its last few seconds) and send it as a partial result. */
   partial() {
     const now = Date.now();
-    if (this.partialBusy || this.backlog > 0 || now - this.lastPartial < PARTIAL_EVERY_MS) return;
+    if (this.partialBusy || this.backlog > 0 || now - this.lastPartial < this.partialGap) return;
     if (this.liveLen < SAMPLE_RATE * 0.6) return;
     this.lastPartial = now;
     this.partialBusy = true;
@@ -151,7 +153,11 @@ class OfflineStream extends EventEmitter {
         const rec = cache.recognizer;
         const stream = rec.createStream();
         stream.acceptWaveform({ samples, sampleRate: SAMPLE_RATE });
+        const t0 = Date.now();
         const res = await rec.decodeAsync(stream);
+        // Keep re-reading to at most ~1/3 of the time, so the PC stays free for everything else.
+        const took = Date.now() - t0;
+        this.partialGap = Math.min(3000, Math.max(PARTIAL_EVERY_MS, took * 3));
         const text = (res?.text || '').trim();
         // a finished phrase may have arrived meanwhile; then this partial is stale
         if (text && this.running && this.speaking) this.emit('result', { text, isFinal: false });
