@@ -5,6 +5,9 @@ import { findReferences, formatRef } from './bibleRef.js';
 import { quoteConfidence, QUOTE_MIN_CONFIDENCE } from './quotes.js';
 
 const REPEAT_WINDOW_MS = 15000;
+const SCREEN_FRESH_MS = 5 * 60000;
+// "next verse", "the following verse", "next scripture", "verse after that"
+const NEXT_RE = /\b(?:next|following)\s+(?:verse|versus|scripture)\b|\bverse after (?:that|this)\b/;
 const DOUBTFUL_REPEAT_CONFIDENCE = 70;
 
 export class ScriptureDetector {
@@ -17,7 +20,9 @@ export class ScriptureDetector {
     this.quoteIndex = null;
     this.window = []; // last words spoken, for quote matching
     this.quoteMin = QUOTE_MIN_CONFIDENCE;
-    this.lastDirect = null; // last book+chapter+verse said in full, for catching misheard repeats
+    this.lastDirect = null;
+    this.onScreen = null; // what the operator (or auto-present) last put on screen
+    this.lastNextAt = 0; // last book+chapter+verse said in full, for catching misheard repeats
   }
 
   /**
@@ -45,8 +50,39 @@ export class ScriptureDetector {
   }
 
   /** Call when the operator shows a verse, so "verse 17" follows what's on screen. */
-  setContext(ref) {
-    if (ref) this.context = { book: ref.book, chapter: ref.chapter };
+  setContext(ref, now = Date.now()) {
+    if (!ref) return;
+    this.context = { book: ref.book, chapter: ref.chapter };
+    if (ref.verse) this.onScreen = { book: ref.book, chapter: ref.chapter, verse: ref.endVerse || ref.verse, at: now };
+  }
+
+  /** "Verse 8" while a verse of that chapter is on screen is almost surely that chapter. */
+  _contextConfidence(r, now) {
+    const o = this._screen(now);
+    return o && o.book === r.book && o.chapter === r.chapter ? 90 : 75;
+  }
+
+  /** The verse on screen, if it was put there in the last few minutes. */
+  _screen(now) {
+    const o = this.onScreen;
+    return o && now - o.at < SCREEN_FRESH_MS ? o : null;
+  }
+
+  /** "Next verse" / "the following verse": one step on from what's on screen. */
+  _nextVerse(text, now) {
+    if (!NEXT_RE.test(text.toLowerCase())) return null;
+    if (now - this.lastNextAt < 3000) return null; // same words seen twice
+    const o = this._screen(now);
+    if (!o) return null;
+    const verses = this.books?.[o.book]?.chapters?.[o.chapter - 1];
+    if (!verses || o.verse + 1 > verses.length) return null;
+    this.lastNextAt = now;
+    const ref = { book: o.book, chapter: o.chapter, verse: o.verse + 1 };
+    this.onScreen = { ...ref, at: now }; // a second "next verse" goes one further
+    this.context = { book: ref.book, chapter: ref.chapter };
+    const key = formatRef(ref);
+    this.lastSeen.set(key, now);
+    return { id: `${key}@${now}`, ref, endVerse: null, label: key, heard: 'next verse', kind: 'next', confidence: 90, at: now };
   }
 
   /**
@@ -115,10 +151,16 @@ export class ScriptureDetector {
         label: key,
         heard: r.text,
         kind: r.fromContext ? 'context' : r.verse ? 'verse' : 'chapter',
-        confidence: check === 'doubtful' ? DOUBTFUL_REPEAT_CONFIDENCE : r.fromContext ? 75 : r.split ? 90 : r.verse ? 95 : 85,
+        confidence: check === 'doubtful' ? DOUBTFUL_REPEAT_CONFIDENCE : r.fromContext ? this._contextConfidence(r, now) : r.split ? 90 : r.verse ? 95 : 85,
         ...(check === 'doubtful' ? { note: 'maybe misheard repeat' } : {}),
         at: now,
       });
+    }
+
+    // "next verse" — only in the new words, so the copy kept in the tail never counts twice
+    if (!out.length) {
+      const nx = this._nextVerse(text, now);
+      if (nx) out.push(nx);
     }
 
     // Quoted verses: look at roughly the last 40 words

@@ -1,7 +1,7 @@
 {
   "name": "church-presenter",
   "productName": "Church Presenter",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Scripture presenter with live sermon transcription (Phase 1: presenter core)",
   "type": "module",
   "main": "electron/main.cjs",

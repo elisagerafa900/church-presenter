@@ -190,6 +190,7 @@ function normalize(text) {
   s = s.replace(/([a-z])-([a-z])/g, '$1 $2'); // twenty-three -> twenty three
   s = s.replace(/[^a-z0-9:\-\s.]/g, ' ');
   s = s.replace(/\.(?=\s|$)/g, ' ');
+  s = s.replace(/\b(\d{1,3})\.(\d{1,3})\b/g, '$1:$2'); // speech engines write "Malachi 3.3" for 3:3
   s = s.replace(/([a-z])(\d)/g, '$1 $2'); // jn3:16 -> jn 3:16
   s = wordsToDigits(s);
   // "verse 16 to 18", "16 through 18" -> 16-18
@@ -257,8 +258,7 @@ export function findReferences(text, opts = {}) {
   }
   // "verse 17" with no book, using context (live reading follow-along)
   if (spoken && context && out.length === 0) {
-    const vm = s.match(/\b(?:verses?|vs)\s*(\d+)(?:-(\d+))?/);
-    if (vm) {
+    for (const vm of s.matchAll(/\b(?:verses?|versus|vis|vs)\s*(\d+)(?:-(\d+))?/g)) {
       const ref = validate({ book: context.book, chapter: context.chapter, verse: +vm[1], endVerse: vm[2] ? +vm[2] : null }, books);
       if (ref) out.push({ ...ref, index: vm.index, text: vm[0].trim(), fromContext: true });
     }

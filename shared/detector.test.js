@@ -90,7 +90,30 @@ eq('split: John 316', f8('John 316 says for God so loved'), ['John 3:16|90']);
 eq('split: Luke 2447', f8('look at Luke 2447'), ['Luke 24:47|90']);
 eq('split: real chapter stays', f8('Psalm 119 is long'), ['Psalms 119|85']);
 eq('split: ambiguous is ignored', f8('Genesis 123 is'), []);
+eq('split: Malachi 3.3 (dot)', f8('He wants to purify you. You see that in Malachi 3.3, he will sit as a refiner of silver'), ['Malachi 3:3|95']);
+eq('split: early Malachi 3.3', new ScriptureDetector(books).feedInterim('You see that in Malachi 3.3, he will sit', 1).map((x) => x.label), ['Malachi 3:3']);
 eq('split: early Malachi 33', d8.feedInterim('the thing in Malachi 33 he will sit', (t8 += 60000)).map((x) => `${x.label}|${x.confidence}`), ['Malachi 3:3|90']);
+
+// Following along: "next verse" and "verse 8" while a verse is on screen (real sermon lines)
+const d9 = new ScriptureDetector(books);
+let t9 = 0;
+const f9 = (s) => d9.feed(s, (t9 += 6000)).map((x) => `${x.label}|${x.confidence}`);
+d9.setContext({ book: 43, chapter: 7, verse: 23 }, t9); // Acts 7:23 on screen
+eq('next: next verse', f9('Moses. Next verse. And seeing one of them suffer wrong, he defended him'), ['Acts 7:24|90']);
+eq('next: again goes one further', f9('struck down the Egyptian. Next verse.'), ['Acts 7:25|90']);
+eq('next: plain talk', f9('For he supposed that his brethren would have understood'), []);
+d9.setContext({ book: 58, chapter: 1, verse: 2 }, t9); // operator shows James 1:2
+eq('verse N: on screen chapter goes up', f9('Now, you know this same James, look at verse 13.'), ['James 1:13|90']);
+d9.setContext({ book: 58, chapter: 1, verse: 13 }, t9);
+eq('verse N: go to verse three', f9('Let no one say when he is tempted. Now go to verse three. He says'), ['James 1:3|90']);
+d9.setContext({ book: 58, chapter: 1, verse: 3 }, t9);
+eq('next: twice in one breath counts once', f9('Next verse, next verse.'), ['James 1:4|90']);
+const d10 = new ScriptureDetector(books);
+eq('next: nothing on screen', d10.feed('Next verse.', 1).map((x) => x.label), []);
+d10.setContext({ book: 64, chapter: 1, verse: 25 }, 1); // Jude 1:25, last verse
+eq('next: past the end', d10.feed('Next verse.', 5000).map((x) => x.label), []);
+d10.setContext({ book: 42, chapter: 3, verse: 16 }, 0);
+eq('verse N: stale screen is 75', d10.feed('look at verse 17', 10 * 60000).map((x) => `${x.label}|${x.confidence}`), ['John 3:17|75']);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
